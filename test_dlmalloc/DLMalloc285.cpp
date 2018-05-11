@@ -1552,12 +1552,14 @@ static void checkInit()
 	if (gBaseAddress == 0)
 	{
 		pageLiner = std::make_unique<PageRangeLiner>(gReserveSize / (64 * 1024));
-		for (int i = 0; i < 30; ++i)
+		for (int i = 0; i < 40; ++i)
 		{
-			void * base = (void*)(gBaseAddressTry + i * 64 * 1024 * 1024); //TODO change to 64M
+			void * base = (void*)(gBaseAddressTry + i * 64 * 1024 * 1024);			 
 			void* ptr = VirtualAlloc(base, gReserveSize, MEM_RESERVE, PAGE_READWRITE);
 			if (ptr)
 			{
+				size_t total = size_t(ptr) + size_t(gReserveSize);
+				assert(size_t(ptr) + size_t(gReserveSize) < size_t(4) * 1024 * 1024 * 1024);
 				gBaseAddress = (size_t)ptr;
 				break;
 			}
