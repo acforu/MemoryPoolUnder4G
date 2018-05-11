@@ -1508,7 +1508,7 @@ static int dev_zero_fd = -1; /* Cached file descriptor for /dev/zero. */
 
 
 
-#if 0
+#ifndef USING_UNDER4G
 
 /* Win32 MMAP via VirtualAlloc */
 static FORCEINLINE void* win32mmap(size_t size) {
@@ -1543,7 +1543,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 #else 
 static size_t gBaseAddress = 0;
 static size_t gBaseAddressTry = (1024 * 1024 * 1024);
-static size_t gBaseAddressSize = 1024 * 1024 * 1024;
+static size_t gReserveSize = 1024 * 1024 * 1024;
 static size_t gPageSize = 64 * 1024;
 static std::unique_ptr<PageRangeLiner> pageLiner;
 
@@ -1551,11 +1551,11 @@ static void checkInit()
 {
 	if (gBaseAddress == 0)
 	{
-		pageLiner = std::make_unique<PageRangeLiner>(gBaseAddressSize / (64 * 1024));
-		for (int i = 0; i < 100; ++i)
+		pageLiner = std::make_unique<PageRangeLiner>(gReserveSize / (64 * 1024));
+		for (int i = 0; i < 30; ++i)
 		{
-			void * base = (void*)(gBaseAddressTry + i * 100 * 1024 * 1024);
-			void* ptr = VirtualAlloc(base, gBaseAddressSize, MEM_RESERVE, PAGE_READWRITE);
+			void * base = (void*)(gBaseAddressTry + i * 64 * 1024 * 1024); //TODO change to 64M
+			void* ptr = VirtualAlloc(base, gReserveSize, MEM_RESERVE, PAGE_READWRITE);
 			if (ptr)
 			{
 				gBaseAddress = (size_t)ptr;
@@ -1602,13 +1602,14 @@ static FORCEINLINE void* win32direct_mmap(size_t size) {
 static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 	MEMORY_BASIC_INFORMATION minfo;
 	char* cptr = (char*)ptr;
-	while (size) {
+// 	while (size) 
+	{
 		if (VirtualQuery(cptr, &minfo, sizeof(minfo)) == 0)
 			return -1;
-		if (minfo.BaseAddress != cptr || // minfo.AllocationBase != cptr ||
-			minfo.State != MEM_COMMIT || minfo.RegionSize > size)
-			return -1;
-		if (VirtualFree(cptr, minfo.RegionSize, MEM_DECOMMIT) == 0)
+// 		if (minfo.BaseAddress != cptr || // minfo.AllocationBase != cptr ||
+// 			minfo.State != MEM_COMMIT )// || minfo.RegionSize > size)
+// 			return -1;
+		if (VirtualFree(cptr, size, MEM_DECOMMIT) == 0)
 		{
 			DWORD  err = GetLastError();
 			(err);
@@ -1616,11 +1617,11 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 		}		
 		else
 		{
-			PageRange range((size_t(cptr) - gBaseAddress + gPageSize - 1) / gPageSize, (size_t(cptr) + minfo.RegionSize - gBaseAddress + gPageSize - 1) / gPageSize);
+			PageRange range((size_t(cptr) - gBaseAddress + gPageSize - 1) / gPageSize, (size_t(cptr) + size - gBaseAddress + gPageSize - 1) / gPageSize);
 			pageLiner->Release(range);
 		}
-		cptr += minfo.RegionSize;
-		size -= minfo.RegionSize;
+// 		cptr += minfo.RegionSize;
+// 		size -= minfo.RegionSize;
 	}
 	return 0;
 }

@@ -13,12 +13,13 @@ PageRangeLiner::~PageRangeLiner()
 
 bool PageRangeLiner::Acquire(int size, PageRange& out)
 {
-	for (int i = 0; i < flags.size(); ++i)
+	for (int i = 0; i + size <= flags.size(); ++i)
 	{
 		int j = 0;
-		for (; j < size; ++j)
+		for (; j < size; ++j) //TODO optimize
 		{
-			if (flags[i])
+			int index = i + j;
+			if (flags[index])
 				break;
 		}
 		if (j == size)
@@ -40,6 +41,7 @@ void PageRangeLiner::Release(PageRange range)
 	assert(range.beg >= 0 && range.end <= flags.size());
 	for (int i = range.beg; i < range.end; ++i)
 	{
+		assert(flags[i]== true);
 		flags[i] = false;
 	}
 }

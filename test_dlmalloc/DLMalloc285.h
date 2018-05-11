@@ -1,4 +1,4 @@
-
+#define USING_UNDER4G
 #define  USING_DLMALLOC
 
 #ifndef DLMalloc285_H__
